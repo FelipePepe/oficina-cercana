@@ -87,6 +87,16 @@ def test_first_cp_row_without_header_is_kept(tmp_path):
     assert rows[2].startswith("28013;Oficina Madrid-Centro;28013;")
 
 
+def test_exact_tie_does_not_depend_on_file_order(tmp_path_factory):
+    """Offices at the same CP tie exactly; the winner must not depend on file order."""
+    zeta_first = "28013;Oficina Zeta\n28013;Oficina Alfa\n"
+    alfa_first = "28013;Oficina Alfa\n28013;Oficina Zeta\n"
+    out_a = run_in(tmp_path_factory.mktemp("a"), "28013\n", zeta_first)[2]
+    out_b = run_in(tmp_path_factory.mktemp("b"), "28013\n", alfa_first)[2]
+    assert out_a == out_b
+    assert out_a.decode("utf-8-sig").splitlines()[1].startswith("28013;Oficina Alfa;")
+
+
 def test_first_office_row_without_header_is_reported(tmp_path):
     oficinas = "ABC12;Oficina Basura-Test\n28013;Oficina Madrid-Centro\n"
     code, stdout, produced = run_in(tmp_path, cps_text="28045\n", oficinas_text=oficinas)

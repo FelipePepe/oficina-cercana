@@ -117,7 +117,8 @@ def main():
                 w.writerow([fila[0].strip(), "", "", "SIN COORDENADAS"])
                 sin_coords += 1
                 continue
-            nombre, cp_of, pos = min(oficinas, key=lambda o: haversine(coords[cp], o[2]))
+            # Empate exacto: gana el menor CP de oficina y luego el nombre, nunca el orden del fichero.
+            nombre, cp_of, pos = min(oficinas, key=lambda o: (haversine(coords[cp], o[2]), o[1], o[0]))
             w.writerow([cp, nombre, cp_of, f"{haversine(coords[cp], pos):.1f}"])
 
     print(f"Hecho: {SALIDA}")

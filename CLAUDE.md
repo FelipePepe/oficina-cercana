@@ -22,7 +22,7 @@ The sample `cps.csv`, `oficinas.csv` and `asignacion.csv` are synthetic fixtures
 - Extra columns: `29600;comentario extra` (only the first column is used). `cps.csv` has a header (`codigo_postal`), which is skipped.
 - Invalid or unknown CPs: `99999`, `00000`, `ABC12`, `-28013`, `280130` (all output `SIN COORDENADAS`).
 - Unusable office rows, skipped with a warning: CP without coordinates (`99999;Oficina Fantasma-Test`, `abc;Oficina Basura-Test`), no name column (`41002`) and empty name (`06001;`).
-- Exact tie: `Oficina Sevilla-Duplicada` shares CP `41002` with Sevilla-Casco Antiguo; the first office in the CSV wins, so Sevilla-Duplicada never appears in the output. It is the only office that does not win a CP.
+- Exact tie: `Oficina Sevilla-Duplicada` shares CP `41002` with Sevilla-Casco Antiguo; ties are broken by the lowest office CP and then the name (never by file order), and "Sevilla-Casco Antiguo" sorts before "Sevilla-Duplicada", so Sevilla-Duplicada never appears in the output. It is the only office that does not win a CP.
 - Coverage: every other office wins at least one CP (Madrid-Norte wins `28033`, `28034`, `28050`; Logroño wins `01001`; Murcia wins `03001`), plus islands, Ceuta, Melilla, CPs averaged from several localities (`31700`) and far-away CPs (`10001` goes to Sevilla at 233 km).
 
 ## Tests
@@ -36,7 +36,7 @@ python3 -m pytest tests/ -q
 - the produced `asignacion.csv` byte by byte with the committed one (the golden file: BOM, `;` delimiter and line endings included);
 - the lines printed on stdout (the warnings for skipped office rows) with an expected list.
 
-Two more tests write their own header-less inputs and check that a first row that is not a header (`ABC12`) is kept: as `SIN COORDENADAS` in `cps.csv`, and with a warning in `oficinas.csv`.
+Three more tests write their own header-less inputs: a first row that is not a header (`ABC12`) is kept (as `SIN COORDENADAS` in `cps.csv`, with a warning in `oficinas.csv`), and two offices at the same CP in opposite file order give a byte-identical output with the alphabetically first office as winner.
 
 When behaviour changes on purpose, update the golden file deliberately: edit the fixtures if needed, run the script from the repo root, review `git diff asignacion.csv` and commit it together with the change. If `EXPECTED_STDOUT` in the test changes, update it too. Never regenerate the golden file just to make a failing test pass.
 
