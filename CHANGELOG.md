@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] - 2026-11-25
+
+### Added
+
+- `README.md`: usage, input and output formats, behaviour notes, tests, repository layout,
+  gitflow and the data licence caveat.
+
 ## [0.1.2] - 2026-11-25
 
 ### Changed
