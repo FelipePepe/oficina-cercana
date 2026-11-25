@@ -36,6 +36,8 @@ python3 -m pytest tests/ -q
 - the produced `asignacion.csv` byte by byte with the committed one (the golden file: BOM, `;` delimiter and line endings included);
 - the lines printed on stdout (the warnings for skipped office rows) with an expected list.
 
+Two more tests write their own header-less inputs and check that a first row that is not a header (`ABC12`) is kept: as `SIN COORDENADAS` in `cps.csv`, and with a warning in `oficinas.csv`.
+
 When behaviour changes on purpose, update the golden file deliberately: edit the fixtures if needed, run the script from the repo root, review `git diff asignacion.csv` and commit it together with the change. If `EXPECTED_STDOUT` in the test changes, update it too. Never regenerate the golden file just to make a failing test pass.
 
 ## Architecture
@@ -43,7 +45,7 @@ When behaviour changes on purpose, update the golden file deliberately: edit the
 Everything lives in `main()` plus small helpers; the data flow is:
 
 1. `carga_coordenadas()` builds `{cp: (lat, lon)}` from GeoNames `ES.txt` (tab-separated; CP in column 1, lat/lon in columns 9/10). A CP appearing several times is averaged. If `ES.txt` is missing in the **current working directory**, `descarga_geonames()` downloads `ES.zip` from GeoNames and extracts it there (needs network on first run). `ES.txt` (~3 MB) is checked in as a cache.
-2. `lee_csv()` auto-detects the delimiter (`;`, `,` or tab) with `csv.Sniffer`, strips the BOM, and skips the first row only if its first cell is not a valid CP (header detection via `normaliza_cp`). `csv.Sniffer` fails when rows have different column counts, so the fallback picks the most frequent of `;`, `,`, tab in the sample (not plain comma).
+2. `lee_csv()` auto-detects the delimiter (`;`, `,` or tab) with `csv.Sniffer`, strips the BOM, and skips the first row only if its first cell contains no digit (`cp`, `codigo_postal`). A first row with a digit is data, so an invalid CP such as `ABC12` is never dropped silently; the tradeoff is that a header containing a digit (e.g. `cp2`) is read as data. `csv.Sniffer` fails when rows have different column counts, so the fallback picks the most frequent of `;`, `,`, tab in the sample (not plain comma).
 3. `normaliza_cp()` is the single normalization point for CPs: strips whitespace and a `.0` suffix, zero-pads to 5 digits, returns `None` for non-numeric. Always use it before looking up coordinates.
 4. For each CP, the nearest office is found with a linear `min()` over all offices using `haversine()` (km, Earth radius 6371).
 
