@@ -2,7 +2,7 @@
 
 > Instantánea del 2026-11-25. Los tres gráficos y el mapa no caben en Markdown: esta copia los marca como *[Gráfico: …]*. La versión completa, con gráficos y mapa, está en el documento en línea: https://claude.ai/artifact/A7Xbg2csaA1BKJzZ3KXSUp
 >
-> **Estado en v0.1.0:** las debilidades 1 (primera fila descartada en silencio) y 7 (sin pruebas automatizadas) ya están corregidas; el texto de abajo las describe tal como estaban en la instantánea. Las debilidades 2 a 6 y 8 siguen abiertas.
+> **Estado en v0.1.2:** las debilidades 1 (primera fila descartada en silencio) y 7 (sin pruebas automatizadas) están resueltas desde v0.1.0 y así figuran en las tablas y en los pasos recomendados. Las debilidades 2 a 6 y 8 siguen abiertas. El resto del texto es la instantánea del 2026-11-25.
 
 Un script de Python de unas 125 líneas, sin dependencias, asigna a cada código postal (CP) español la oficina más cercana en línea recta. En esta sesión lo endurecimos, construimos unos datos sintéticos que ejercitan todos los casos de entrada que se nos ocurrieron y medimos dónde es frágil.
 
@@ -99,17 +99,17 @@ Todas las oficinas válidas ganan al menos un CP salvo Sevilla-Duplicada. Esa ex
 
 ## Debilidades y riesgos
 
-Ordenadas por la probabilidad de que el problema afecte a datos reales y por lo silencioso que sea. La primera se reprodujo durante esta sesión.
+Ordenadas por la probabilidad de que el problema afecte a datos reales y por lo silencioso que sea. La 1 y la 7 están resueltas desde v0.1.0 y se conservan como registro; la 1 se reprodujo durante esta sesión.
 
 | # | Debilidad | Dónde | Consecuencia |
 | --- | --- | --- | --- |
-| 1 | **La primera fila se descarta en silencio si no es un CP válido.** Un fichero sin cabecera cuya primera fila sea `ABC12` pierde esa fila sin aviso (reproducido: la salida solo contenía `28013`). | `oficina_cercana.py:72-73` | Pérdida de datos que parece éxito |
+| 1 | **Resuelta en v0.1.0: la primera fila se descartaba en silencio si no era un CP válido.** Un fichero sin cabecera cuya primera fila fuera `ABC12` perdía esa fila sin aviso (reproducido: la salida solo contenía `28013`). Ahora solo se salta una primera celda sin ningún dígito, y `ABC12` sale como `SIN COORDENADAS`. Limitación: una cabecera con dígitos (`cp2`) se lee como dato. | `lee_csv()` | Resuelta: ya no hay pérdida silenciosa |
 | 2 | **El error del centroide no se informa.** Un CP promediado sobre localidades a hasta 112 km recibe la misma precisión que uno de una sola localidad. | `carga_coordenadas()` | Asignación errónea cerca de empates, sin aviso al lector |
 | 3 | **La línea recta ignora mar, montañas y carreteras.** Mahón a Palma y Arrecife a Las Palmas se asignan sin marca; Anso (Huesca, `22728`) va a Pamplona. | `haversine()` | Respuestas verosímiles pero operativamente erróneas |
 | 4 | **Los empates dependen del orden del fichero.** `min()` se queda con la primera oficina; si se reordena `oficinas.csv`, cambia el resultado. | `main()` | No reproducible entre exportaciones |
 | 5 | **La descarga no tiene tiempo límite ni comprobación de integridad.** `urlopen` puede colgarse; el zip se extrae en el directorio actual. | `descarga_geonames()` | Bloqueo en la primera ejecución; una caché obsoleta o truncada pasa inadvertida |
-| 6 | **La distancia se calcula dos veces por CP** (una dentro de `min()` y otra para la salida). | líneas 115-116 | Cerca del doble de trabajo; inocuo a este tamaño |
-| 7 | **No hay pruebas automatizadas.** Los datos de prueba existen, pero nada compara la salida con un fichero esperado. | repo | Las regresiones se descubren a mano, como pasó con el delimitador |
+| 6 | **La distancia se calcula dos veces por CP** (una dentro de `min()` y otra para la salida). | líneas 120-121 | Cerca del doble de trabajo; inocuo a este tamaño |
+| 7 | **Resuelta en v0.1.0: no había pruebas automatizadas.** Los datos de prueba existían, pero nada comparaba la salida con un fichero esperado. Ahora `tests/test_golden.py` (4 tests) compara la salida con el fichero de referencia y los avisos, y cubre las primeras filas sin cabecera. | repo | Resuelta: las regresiones se detectan con `python3 -m pytest tests/ -q` |
 | 8 | **Licencia de los datos.** `ES.txt` está versionado. Los datos de GeoNames se distribuyen bajo una licencia Creative Commons de atribución; conviene comprobar los términos vigentes en el readme de GeoNames antes de redistribuir el repositorio, y añadir la atribución. No verificado en esta sesión. | raíz del repo | Posible falta de atribución |
 
 ## Qué podría ser bueno
@@ -118,8 +118,8 @@ Las mejoras más baratas corrigen fallos silenciosos y fijan el comportamiento a
 
 | Oportunidad | Beneficio | Coste y contrapartida |
 | --- | --- | --- |
-| **Prueba de fichero de referencia** (`pytest`: ejecutar el script con los datos de prueba y comparar `asignacion.csv` con el versionado) | Convierte los 16 casos de la matriz en una red contra regresiones; habría detectado el fallo del delimitador | Unas pocas líneas; hay que regenerar el fichero de referencia a propósito cuando cambie el comportamiento |
-| **Avisar al descartar la primera fila** y añadir `--sin-cabecera` / `--cabecera` | Elimina la debilidad 1 | Cambio pequeño; añade una opción que el usuario debe conocer |
+| **Prueba de fichero de referencia** (hecha en v0.1.0: `pytest` ejecuta el script con los datos de prueba y compara `asignacion.csv` con el versionado) | Convierte los casos de la matriz en una red contra regresiones; habría detectado el fallo del delimitador | Resuelto en `tests/test_golden.py`. Hay que regenerar el fichero de referencia a propósito cuando cambie el comportamiento |
+| **No descartar la primera fila** (hecho en v0.1.0, sin opciones nuevas) | Eliminó la debilidad 1 | Resuelto con una regla más estricta: solo es cabecera una primera celda sin dígitos. Contrapartida: una cabecera con dígitos se lee como dato |
 | **Informar la precisión por CP**: añadir a la salida el número de localidades y la dispersión en km | Permite descontar los 131 CPs con dispersión superior a 25 km | Dos columnas más; cambia el contrato de la salida |
 | **Límite y marca**: un umbral `--max-km` y una marca `lejos` | Hace visibles Ceuta, Melilla, islas y casos rurales extremos en vez de ocultarlos | Requiere un umbral de negocio; no corrige la asignación en sí |
 | **Reserva para CPs sin coordenadas**: usar el centroide de la provincia con los dos primeros dígitos | Menos `SIN COORDENADAS` | Es tosco (decenas de km); debe etiquetarse como estimación y nunca mezclarse en silencio con coincidencias exactas |
@@ -132,16 +132,16 @@ El proyecto sigue siendo valioso como herramienta pequeña y auditable. La mayor
 
 ## Pasos recomendados
 
-1. **Subir `main` al estado de `develop` cuando se quiera publicar.** Hoy `main` solo tiene el primer commit; `develop` incluye los datos ampliados.
-2. **Añadir la prueba de fichero de referencia.** Protege todo lo hecho hasta ahora y es lo más barato.
-3. **Dejar de descartar la primera fila en silencio** (debilidad 1): avisar, o exigir una opción explícita de cabecera. Es el único hallazgo que pierde datos sin dejar rastro.
+1. **Hecho: `main` incluye todo lo publicado**, con los tags `v0.1.0`, `v0.1.1` y `v0.1.2`.
+2. **Hecho en v0.1.0: prueba de fichero de referencia** en `tests/test_golden.py`.
+3. **Hecho en v0.1.0: la primera fila ya no se descarta en silencio** (debilidad 1). Solo es cabecera una primera celda sin dígitos.
 4. **Añadir columnas de precisión** (localidades y dispersión en km) para que los 131 CPs por encima de 25 km sean visibles para quien lea el fichero.
 5. **Decidir qué debe significar «más cercana» para las oficinas** (línea recta, misma masa de tierra, tiempo de viaje) antes de invertir esfuerzo en indexación o rutas. Esa respuesta decide entre la búsqueda vectorizada, el servicio de rutas y la opción más barata de límite y marca.
 6. **Añadir la atribución de GeoNames** y confirmar los términos de la licencia antes de compartir el repositorio.
 
 ## Fuentes
 
-- Código: `oficina_cercana.py` en el directorio del proyecto (`lee_csv` líneas 60-74, `main` desde la línea 85, emparejamiento en la línea 115).
+- Código: `oficina_cercana.py` en el directorio del proyecto (`lee_csv` líneas 60-79, `main` desde la línea 90, emparejamiento en la línea 120; líneas de v0.1.0).
 - Datos: códigos postales de España de GeoNames, `https://download.geonames.org/export/zip/ES.zip`, versionados en local como `ES.txt`. Las estadísticas de arriba se calcularon con ese fichero el 2026-11-25. El contorno del mapa viene de Natural Earth 1:50m a través del paquete world-atlas, simplificado; su licencia no se verificó aquí.
 - Mediciones: scripts ejecutados en un directorio temporal sobre los ficheros versionados; el escalado usó 2000 CPs y oficinas elegidas al azar (semilla 1) y es orientativo, no un benchmark.
 - No verificado: la versión exacta de la licencia de GeoNames. La afirmación de que sus datos llevan una licencia Creative Commons de atribución sale de conocimiento general, no de una página abierta aquí.
