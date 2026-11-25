@@ -18,11 +18,12 @@ python oficina_cercana.py cps.csv oficinas.csv
 
 The sample `cps.csv`, `oficinas.csv` and `asignacion.csv` are synthetic fixtures/example output (regenerate `asignacion.csv` by re-running the script after editing the inputs). They deliberately include edge cases:
 
-- CP formats: unpadded (`8001`, `1001`), Excel floats (`41002.0`, office `18001.0`), surrounding spaces (` 46010`, office ` 47001 `), a blank line, and a duplicated input CP (`28013`, which yields two output rows).
-- Invalid or unknown CPs: `99999`, `00000`, `ABC12` (all output `SIN COORDENADAS`), and offices with unusable CPs (`99999;Oficina Fantasma-Test`, `abc;Oficina Basura-Test`), which are skipped with a warning.
-- Malformed office row: a bare `41002` with no name, which is skipped with a warning.
-- Exact tie: `Oficina Madrid-Norte` shares CP `28013` with Madrid-Centro; the first office in the CSV wins.
-- Coverage: every office wins at least one CP; islands, Ceuta and Melilla are included.
+- CP formats: unpadded (`8001`, `1001`), Excel floats (`41002.0`, office `18001.0`), leading/trailing spaces (` 46010`, `28013 `, office ` 47001 `), a blank line, and duplicated input CPs (`28013`, `08001`, `01001`, which yield one output row each).
+- Extra columns: `29600;comentario extra` (only the first column is used). `cps.csv` has a header (`codigo_postal`), which is skipped.
+- Invalid or unknown CPs: `99999`, `00000`, `ABC12`, `-28013`, `280130` (all output `SIN COORDENADAS`).
+- Unusable office rows, skipped with a warning: CP without coordinates (`99999;Oficina Fantasma-Test`, `abc;Oficina Basura-Test`), no name column (`41002`) and empty name (`06001;`).
+- Exact tie: `Oficina Sevilla-Duplicada` shares CP `41002` with Sevilla-Casco Antiguo; the first office in the CSV wins, so Sevilla-Duplicada never appears in the output. It is the only office that does not win a CP.
+- Coverage: every other office wins at least one CP (Madrid-Norte wins `28033`, `28034`, `28050`; Logroño wins `01001`; Murcia wins `03001`), plus islands, Ceuta, Melilla, CPs averaged from several localities (`31700`) and far-away CPs (`10001` goes to Sevilla at 233 km).
 
 ## Architecture
 
