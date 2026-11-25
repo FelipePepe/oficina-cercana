@@ -58,4 +58,6 @@ Git workflow: gitflow. Work happens on `feature/*` and `fix/*` branches merged i
 
 ## Data and licence
 
-`ES.txt` is GeoNames data, which is distributed under a Creative Commons Attribution licence; check the current terms in the GeoNames readme and keep the attribution before redistributing this repository. This project has no licence file yet.
+`ES.txt` is GeoNames data, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) (verified against the GeoNames readme on 2026-11-25). Keep the credit when redistributing this repository: *Postal code data © [GeoNames](https://www.geonames.org), CC BY 4.0*. See [`NOTICE.md`](NOTICE.md). GeoNames coordinates are often computed by an algorithm, so treat them as approximate.
+
+This project's own code has no licence file yet; that is the repository owner's decision.
