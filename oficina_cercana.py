@@ -3,7 +3,7 @@
 Asigna a cada código postal la oficina más cercana (en línea recta).
 
 Uso:
-    python oficina_cercana.py cps.csv oficinas.csv [--precision]
+    python oficina_cercana.py cps.csv oficinas.csv [--precision] [--max-km N]
 
   cps.csv       -> primera columna: código postal
   oficinas.csv  -> primera columna: código postal, segunda: oficina
@@ -13,6 +13,9 @@ carpeta, el script lo descarga solo la primera vez.
 
 Con --precision añade dos columnas: localidades (filas de GeoNames de ese CP)
 y dispersion_km (mayor distancia de una localidad al centroide usado).
+
+Con --max-km N añade una última columna lejos: SI si la distancia exacta supera
+N km, NO si no. Avisa de asignaciones dudosas; la oficina asignada no cambia.
 
 Resultado: asignacion.csv
 """
@@ -122,6 +125,16 @@ def haversine(a, b):
     return 2 * 6371 * math.asin(math.sqrt(h))
 
 
+def km_positivo(texto):
+    try:
+        valor = float(texto)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"no es un número: {texto!r}")
+    if not valor > 0:  # también rechaza NaN
+        raise argparse.ArgumentTypeError(f"debe ser mayor que 0: {texto!r}")
+    return valor
+
+
 def lee_argumentos():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -129,6 +142,8 @@ def lee_argumentos():
     p.add_argument("oficinas", help="CSV con CP y nombre de cada oficina")
     p.add_argument("--precision", action="store_true",
                    help="añade localidades y dispersion_km de cada CP")
+    p.add_argument("--max-km", type=km_positivo, metavar="N",
+                   help="añade la columna lejos: SI si la distancia supera N km")
     return p.parse_args()
 
 
@@ -155,17 +170,22 @@ def main():
         cabecera = ["codigo_postal", "oficina", "cp_oficina", "distancia_km"]
         if args.precision:
             cabecera += ["localidades", "dispersion_km"]
+        if args.max_km is not None:
+            cabecera.append("lejos")
         w.writerow(cabecera)
         for fila in lee_csv(args.cps):
             cp = normaliza_cp(fila[0])
             if cp not in coords:
-                w.writerow([fila[0].strip(), "", "", "SIN COORDENADAS"] + (["", ""] if args.precision else []))
+                vacias = (2 if args.precision else 0) + (args.max_km is not None)
+                w.writerow([fila[0].strip(), "", "", "SIN COORDENADAS"] + [""] * vacias)
                 sin_coords += 1
                 continue
             # Empate exacto: gana el menor CP de oficina y luego el nombre, nunca el orden del fichero.
             dist, cp_of, nombre = min((haversine(coords[cp], pos), cp_of, nombre)
                                       for nombre, cp_of, pos in oficinas)
             extra = [precision[cp][0], f"{precision[cp][1]:.1f}"] if args.precision else []
+            if args.max_km is not None:
+                extra.append("SI" if dist > args.max_km else "NO")
             w.writerow([cp, nombre, cp_of, f"{dist:.1f}"] + extra)
 
     print(f"Hecho: {SALIDA}")

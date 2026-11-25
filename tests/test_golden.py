@@ -147,3 +147,36 @@ def test_precision_sin_coordenadas_row_has_two_empty_cells(tmp_path):
     _, rows = rows_by_cp(produced)
     assert code == 0
     assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", "", ""]
+
+
+def test_max_km_flags_far_assignments(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="11004\n39001\n", args=("--max-km", "100"))
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == "codigo_postal;oficina;cp_oficina;distancia_km;lejos"
+    assert rows["11004"][3] == "100.1" and rows["11004"][4] == "SI"
+    assert rows["39001"][3] == "74.6" and rows["39001"][4] == "NO"
+
+
+def test_max_km_sin_coordenadas_row_has_empty_cell(tmp_path):
+    _, _, produced = run_in(tmp_path, cps_text="99999\n", args=("--max-km", "100"))
+    _, rows = rows_by_cp(produced)
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", ""]
+
+
+def test_both_flags_column_order(tmp_path):
+    code, _, produced = run_in(
+        tmp_path, cps_text="11004\n99999\n", args=("--precision", "--max-km", "100")
+    )
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == PRECISION_HEADER + ";lejos"
+    assert rows["11004"][3] == "100.1" and rows["11004"][6] == "SI"
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", "", "", ""]
+
+
+@pytest.mark.parametrize("valor", ["0", "-5"])
+def test_max_km_must_be_positive(tmp_path, valor):
+    code, _, produced = run_in(tmp_path, args=("--max-km", valor))
+    assert code != 0
+    assert produced == b""
