@@ -3,7 +3,7 @@
 Asigna a cada código postal la oficina más cercana (en línea recta).
 
 Uso:
-    python oficina_cercana.py cps.csv oficinas.csv
+    python oficina_cercana.py cps.csv oficinas.csv [--precision]
 
   cps.csv       -> primera columna: código postal
   oficinas.csv  -> primera columna: código postal, segunda: oficina
@@ -11,8 +11,12 @@ Uso:
 Las coordenadas salen de GeoNames (ES.zip). Si no está ES.txt en la
 carpeta, el script lo descarga solo la primera vez.
 
+Con --precision añade dos columnas: localidades (filas de GeoNames de ese CP)
+y dispersion_km (mayor distancia de una localidad al centroide usado).
+
 Resultado: asignacion.csv
 """
+import argparse
 import csv
 import io
 import math
@@ -65,21 +69,27 @@ def descarga_geonames():
 
 
 def carga_coordenadas():
-    """Devuelve {cp: (lat, lon)}; si un CP sale varias veces, hace la media."""
+    """Devuelve (coords, precision).
+
+    coords[cp] = (lat, lon): si un CP sale varias veces, hace la media.
+    precision[cp] = (n, dispersion_km): localidades del CP en GeoNames y la
+    mayor distancia de cualquiera de ellas al centroide medio.
+    """
     if not os.path.exists(GEONAMES_TXT):
         descarga_geonames()
-    acum = {}
+    puntos = {}
     with open(GEONAMES_TXT, encoding="utf-8") as f:
         for fila in csv.reader(f, delimiter="\t"):
             cp = normaliza_cp(fila[1])
             if not cp:
                 continue
-            lat, lon = float(fila[9]), float(fila[10])
-            s = acum.setdefault(cp, [0.0, 0.0, 0])
-            s[0] += lat
-            s[1] += lon
-            s[2] += 1
-    return {cp: (s[0] / s[2], s[1] / s[2]) for cp, s in acum.items()}
+            puntos.setdefault(cp, []).append((float(fila[9]), float(fila[10])))
+    coords, precision = {}, {}
+    for cp, ps in puntos.items():
+        centro = (sum(p[0] for p in ps) / len(ps), sum(p[1] for p in ps) / len(ps))
+        coords[cp] = centro
+        precision[cp] = (len(ps), max(haversine(p, centro) for p in ps))
+    return coords, precision
 
 
 def lee_csv(ruta):
@@ -112,15 +122,22 @@ def haversine(a, b):
     return 2 * 6371 * math.asin(math.sqrt(h))
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(__doc__)
-        sys.exit(1)
+def lee_argumentos():
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("cps", help="CSV con los códigos postales a asignar")
+    p.add_argument("oficinas", help="CSV con CP y nombre de cada oficina")
+    p.add_argument("--precision", action="store_true",
+                   help="añade localidades y dispersion_km de cada CP")
+    return p.parse_args()
 
-    coords = carga_coordenadas()
+
+def main():
+    args = lee_argumentos()
+    coords, precision = carga_coordenadas()
 
     oficinas = []
-    for fila in lee_csv(sys.argv[2]):
+    for fila in lee_csv(args.oficinas):
         if len(fila) < 2 or not fila[1].strip():
             print(f"Aviso: fila de oficinas sin nombre, se ignora ({fila[0]})")
             continue
@@ -135,17 +152,21 @@ def main():
     sin_coords = 0
     with open(SALIDA, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f, delimiter=";")
-        w.writerow(["codigo_postal", "oficina", "cp_oficina", "distancia_km"])
-        for fila in lee_csv(sys.argv[1]):
+        cabecera = ["codigo_postal", "oficina", "cp_oficina", "distancia_km"]
+        if args.precision:
+            cabecera += ["localidades", "dispersion_km"]
+        w.writerow(cabecera)
+        for fila in lee_csv(args.cps):
             cp = normaliza_cp(fila[0])
             if cp not in coords:
-                w.writerow([fila[0].strip(), "", "", "SIN COORDENADAS"])
+                w.writerow([fila[0].strip(), "", "", "SIN COORDENADAS"] + (["", ""] if args.precision else []))
                 sin_coords += 1
                 continue
             # Empate exacto: gana el menor CP de oficina y luego el nombre, nunca el orden del fichero.
             dist, cp_of, nombre = min((haversine(coords[cp], pos), cp_of, nombre)
                                       for nombre, cp_of, pos in oficinas)
-            w.writerow([cp, nombre, cp_of, f"{dist:.1f}"])
+            extra = [precision[cp][0], f"{precision[cp][1]:.1f}"] if args.precision else []
+            w.writerow([cp, nombre, cp_of, f"{dist:.1f}"] + extra)
 
     print(f"Hecho: {SALIDA}")
     if sin_coords:

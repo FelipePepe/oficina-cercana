@@ -27,7 +27,7 @@ EXPECTED_STDOUT = [
 ]
 
 
-def run_in(work, cps_text=None, oficinas_text=None):
+def run_in(work, cps_text=None, oficinas_text=None, args=()):
     """Run the script in `work`; return (code, stdout, output bytes).
 
     cps.csv and oficinas.csv are the committed fixtures unless a text is given.
@@ -40,7 +40,7 @@ def run_in(work, cps_text=None, oficinas_text=None):
         else:
             (work / name).write_text(text, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(SCRIPT), "cps.csv", "oficinas.csv"],
+        [sys.executable, str(SCRIPT), "cps.csv", "oficinas.csv", *args],
         cwd=work,
         capture_output=True,
         text=True,
@@ -104,3 +104,46 @@ def test_first_office_row_without_header_is_reported(tmp_path):
     assert code == 0
     assert "tiene un CP sin coordenadas (ABC12)" in stdout
     assert rows[1].startswith("28045;Oficina Madrid-Centro;28013;")
+
+
+PRECISION_HEADER = "codigo_postal;oficina;cp_oficina;distancia_km;localidades;dispersion_km"
+
+
+def one_locality_cp(monkeypatch):
+    """A CP with a single locality in ES.txt, derived through the module."""
+    sys.path.insert(0, str(ROOT))
+    import oficina_cercana
+
+    monkeypatch.chdir(ROOT)
+    _, precision = oficina_cercana.carga_coordenadas()
+    return next(cp for cp, (n, _) in sorted(precision.items()) if n == 1)
+
+
+def rows_by_cp(produced):
+    rows = produced.decode("utf-8-sig").splitlines()
+    return rows[0], {r.split(";")[0]: r.split(";") for r in rows[1:]}
+
+
+def test_precision_header_and_multi_locality_cp(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="31700\n", args=("--precision",))
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == PRECISION_HEADER
+    assert int(rows["31700"][4]) > 1
+    assert float(rows["31700"][5]) > 0.0
+
+
+def test_precision_single_locality_cp(tmp_path, monkeypatch):
+    cp = one_locality_cp(monkeypatch)
+    code, _, produced = run_in(tmp_path, cps_text=cp + "\n", args=("--precision",))
+    _, rows = rows_by_cp(produced)
+    assert code == 0
+    assert rows[cp][4] == "1"
+    assert rows[cp][5] == "0.0"
+
+
+def test_precision_sin_coordenadas_row_has_two_empty_cells(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="99999\n", args=("--precision",))
+    _, rows = rows_by_cp(produced)
+    assert code == 0
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", "", ""]
