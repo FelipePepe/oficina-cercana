@@ -118,8 +118,9 @@ def main():
                 sin_coords += 1
                 continue
             # Empate exacto: gana el menor CP de oficina y luego el nombre, nunca el orden del fichero.
-            nombre, cp_of, pos = min(oficinas, key=lambda o: (haversine(coords[cp], o[2]), o[1], o[0]))
-            w.writerow([cp, nombre, cp_of, f"{haversine(coords[cp], pos):.1f}"])
+            dist, cp_of, nombre = min((haversine(coords[cp], pos), cp_of, nombre)
+                                      for nombre, cp_of, pos in oficinas)
+            w.writerow([cp, nombre, cp_of, f"{dist:.1f}"])
 
     print(f"Hecho: {SALIDA}")
     if sin_coords:
