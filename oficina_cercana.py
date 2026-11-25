@@ -58,7 +58,12 @@ def carga_coordenadas():
 
 
 def lee_csv(ruta):
-    """Lee CSV con ; o , (lo detecta solo) y salta la cabecera si la hay."""
+    """Lee CSV con ; o , (lo detecta solo).
+
+    La primera fila se salta solo si parece una cabecera: su primera celda no
+    tiene ningún dígito. Una primera fila con dígitos (un CP inválido como
+    ABC12) es un dato y sigue el camino normal, así que nunca se pierde en silencio.
+    """
     with open(ruta, encoding="utf-8-sig", newline="") as f:
         muestra = f.read(4096)
         f.seek(0)
@@ -69,8 +74,8 @@ def lee_csv(ruta):
             class dialecto(csv.excel):
                 delimiter = max(";,\t", key=muestra.count)
         filas = [fila for fila in csv.reader(f, dialecto) if fila]
-    if filas and not normaliza_cp(filas[0][0]):
-        filas = filas[1:]  # cabecera
+    if filas and not any(c.isdigit() for c in filas[0][0]):
+        filas = filas[1:]  # cabecera: una primera celda sin ningún dígito ("cp")
     return filas
 
 
