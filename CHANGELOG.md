@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-11-25
+
+### Changed
+
+- `docs/informe-tecnico.md`: weaknesses 1 (first row dropped silently) and 7 (no automated
+  tests) are marked as resolved in the tables and in the recommended steps, and the code
+  line references match v0.1.0.
+
 ## [0.1.1] - 2026-11-25
 
 ### Added
