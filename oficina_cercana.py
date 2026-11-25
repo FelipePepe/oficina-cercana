@@ -23,6 +23,9 @@ import zipfile
 
 GEONAMES_URL = "https://download.geonames.org/export/zip/ES.zip"
 GEONAMES_TXT = "ES.txt"
+GEONAMES_TIMEOUT = 30  # segundos
+GEONAMES_MIN_LINEAS = 1000
+GEONAMES_MIN_COLUMNAS = 12
 SALIDA = "asignacion.csv"
 
 
@@ -33,10 +36,32 @@ def normaliza_cp(cp):
 
 
 def descarga_geonames():
+    """Descarga ES.txt de GeoNames; si algo falla, no deja ningún fichero a medias."""
     print("Descargando coordenadas de GeoNames...")
-    with urllib.request.urlopen(GEONAMES_URL) as r:
-        with zipfile.ZipFile(io.BytesIO(r.read())) as z:
-            z.extract(GEONAMES_TXT)
+    parcial = GEONAMES_TXT + ".part"
+    try:
+        with urllib.request.urlopen(GEONAMES_URL, timeout=GEONAMES_TIMEOUT) as r:
+            datos = r.read()
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
+            texto = z.read(GEONAMES_TXT).decode("utf-8")
+    except (OSError, zipfile.BadZipFile) as e:  # URLError y los timeouts son OSError
+        sys.exit(f"No se pudo descargar GeoNames ({e}). Revisa la conexión o copia ES.txt a mano.")
+    except KeyError:
+        sys.exit(f"La descarga de GeoNames no contiene {GEONAMES_TXT}. No se guarda nada.")
+    except UnicodeDecodeError:
+        sys.exit("La descarga de GeoNames no es texto UTF-8 válido. No se guarda nada.")
+    lineas = texto.splitlines()
+    if len(lineas) < GEONAMES_MIN_LINEAS or any(
+            len(l.split("\t")) < GEONAMES_MIN_COLUMNAS for l in lineas[:20]):
+        sys.exit("La descarga de GeoNames no tiene el formato esperado. No se guarda nada.")
+    try:
+        with open(parcial, "w", encoding="utf-8", newline="") as f:
+            f.write(texto)
+        os.replace(parcial, GEONAMES_TXT)
+    except OSError as e:
+        if os.path.exists(parcial):
+            os.remove(parcial)
+        sys.exit(f"No se pudo guardar {GEONAMES_TXT} ({e}).")
 
 
 def carga_coordenadas():
