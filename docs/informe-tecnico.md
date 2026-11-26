@@ -2,7 +2,7 @@
 
 > Instantánea del 2026-11-25. Los tres gráficos y el mapa no caben en Markdown: esta copia los marca como *[Gráfico: …]*. La versión completa, con gráficos y mapa, está en el documento en línea: https://claude.ai/artifact/A7Xbg2csaA1BKJzZ3KXSUp
 >
-> **Estado en la rama `fix/remaining-weaknesses` (después de v0.1.3, aún sin versión publicada):** las debilidades 1, 4, 5, 6, 7 y 8 están resueltas; la 2 y la 3 están mitigadas con las opciones `--precision` y `--max-km`, que no cambian la salida por defecto. Queda abierta la distancia real por carretera o por mar (debilidad 3) y la licencia del propio código. El resto del texto es la instantánea del 2026-11-25.
+> **Estado en v0.2.0:** las debilidades 1, 4, 5, 6, 7 y 8 están resueltas; la 2 y la 3 están mitigadas con las opciones `--precision` y `--max-km`, que no cambian la salida por defecto. Queda abierta la distancia real por carretera o por mar (debilidad 3) y la licencia del propio código. El resto del texto es la instantánea del 2026-11-25.
 
 Un script de Python de unas 125 líneas, sin dependencias, asigna a cada código postal (CP) español la oficina más cercana en línea recta. En esta sesión lo endurecimos, construimos unos datos sintéticos que ejercitan todos los casos de entrada que se nos ocurrieron y medimos dónde es frágil.
 
@@ -132,7 +132,7 @@ El proyecto sigue siendo valioso como herramienta pequeña y auditable. La mayor
 
 ## Pasos recomendados
 
-1. **Hecho: `main` incluye todo lo publicado**, con los tags `v0.1.0` a `v0.1.3`.
+1. **Hecho: `main` incluye todo lo publicado**, con los tags `v0.1.0` a `v0.2.0`.
 2. **Hecho en v0.1.0: prueba de fichero de referencia** en `tests/test_golden.py`.
 3. **Hecho en v0.1.0: la primera fila ya no se descarta en silencio** (debilidad 1). Solo es cabecera una primera celda sin dígitos.
 4. **Hecho: columnas de precisión** (`--precision`: localidades y dispersión en km) para que los 131 CPs por encima de 25 km sean visibles para quien lea el fichero.
@@ -141,7 +141,7 @@ El proyecto sigue siendo valioso como herramienta pequeña y auditable. La mayor
 
 ## Fuentes
 
-- Código: `oficina_cercana.py` en el directorio del proyecto (`lee_csv` líneas 98-117, `main` desde la línea 150, emparejamiento en las líneas 184-185; líneas de la rama `fix/remaining-weaknesses`).
+- Código: `oficina_cercana.py` en el directorio del proyecto (`lee_csv` líneas 98-117, `main` desde la línea 150, emparejamiento en las líneas 184-185; líneas de v0.2.0).
 - Datos: códigos postales de España de GeoNames, `https://download.geonames.org/export/zip/ES.zip`, versionados en local como `ES.txt`. Las estadísticas de arriba se calcularon con ese fichero el 2026-11-25. El contorno del mapa viene de Natural Earth 1:50m a través del paquete world-atlas, simplificado; su licencia no se verificó aquí.
 - Mediciones: scripts ejecutados en un directorio temporal sobre los ficheros versionados; el escalado usó 2000 CPs y oficinas elegidas al azar (semilla 1) y es orientativo, no un benchmark.
 - Licencia de GeoNames: verificada el 2026-11-25 en https://download.geonames.org/export/zip/readme.txt (Creative Commons Attribution 4.0, con crédito a GeoNames y un enlace a www.geonames.org). Sigue sin verificarse la licencia del contorno de Natural Earth.
