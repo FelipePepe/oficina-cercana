@@ -27,7 +27,7 @@ EXPECTED_STDOUT = [
 ]
 
 
-def run_in(work, cps_text=None, oficinas_text=None):
+def run_in(work, cps_text=None, oficinas_text=None, args=()):
     """Run the script in `work`; return (code, stdout, output bytes).
 
     cps.csv and oficinas.csv are the committed fixtures unless a text is given.
@@ -40,7 +40,7 @@ def run_in(work, cps_text=None, oficinas_text=None):
         else:
             (work / name).write_text(text, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(SCRIPT), "cps.csv", "oficinas.csv"],
+        [sys.executable, str(SCRIPT), "cps.csv", "oficinas.csv", *args],
         cwd=work,
         capture_output=True,
         text=True,
@@ -87,6 +87,16 @@ def test_first_cp_row_without_header_is_kept(tmp_path):
     assert rows[2].startswith("28013;Oficina Madrid-Centro;28013;")
 
 
+def test_exact_tie_does_not_depend_on_file_order(tmp_path_factory):
+    """Offices at the same CP tie exactly; the winner must not depend on file order."""
+    zeta_first = "28013;Oficina Zeta\n28013;Oficina Alfa\n"
+    alfa_first = "28013;Oficina Alfa\n28013;Oficina Zeta\n"
+    out_a = run_in(tmp_path_factory.mktemp("a"), "28013\n", zeta_first)[2]
+    out_b = run_in(tmp_path_factory.mktemp("b"), "28013\n", alfa_first)[2]
+    assert out_a == out_b
+    assert out_a.decode("utf-8-sig").splitlines()[1].startswith("28013;Oficina Alfa;")
+
+
 def test_first_office_row_without_header_is_reported(tmp_path):
     oficinas = "ABC12;Oficina Basura-Test\n28013;Oficina Madrid-Centro\n"
     code, stdout, produced = run_in(tmp_path, cps_text="28045\n", oficinas_text=oficinas)
@@ -94,3 +104,79 @@ def test_first_office_row_without_header_is_reported(tmp_path):
     assert code == 0
     assert "tiene un CP sin coordenadas (ABC12)" in stdout
     assert rows[1].startswith("28045;Oficina Madrid-Centro;28013;")
+
+
+PRECISION_HEADER = "codigo_postal;oficina;cp_oficina;distancia_km;localidades;dispersion_km"
+
+
+def one_locality_cp(monkeypatch):
+    """A CP with a single locality in ES.txt, derived through the module."""
+    sys.path.insert(0, str(ROOT))
+    import oficina_cercana
+
+    monkeypatch.chdir(ROOT)
+    _, precision = oficina_cercana.carga_coordenadas()
+    return next(cp for cp, (n, _) in sorted(precision.items()) if n == 1)
+
+
+def rows_by_cp(produced):
+    rows = produced.decode("utf-8-sig").splitlines()
+    return rows[0], {r.split(";")[0]: r.split(";") for r in rows[1:]}
+
+
+def test_precision_header_and_multi_locality_cp(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="31700\n", args=("--precision",))
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == PRECISION_HEADER
+    assert int(rows["31700"][4]) > 1
+    assert float(rows["31700"][5]) > 0.0
+
+
+def test_precision_single_locality_cp(tmp_path, monkeypatch):
+    cp = one_locality_cp(monkeypatch)
+    code, _, produced = run_in(tmp_path, cps_text=cp + "\n", args=("--precision",))
+    _, rows = rows_by_cp(produced)
+    assert code == 0
+    assert rows[cp][4] == "1"
+    assert rows[cp][5] == "0.0"
+
+
+def test_precision_sin_coordenadas_row_has_two_empty_cells(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="99999\n", args=("--precision",))
+    _, rows = rows_by_cp(produced)
+    assert code == 0
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", "", ""]
+
+
+def test_max_km_flags_far_assignments(tmp_path):
+    code, _, produced = run_in(tmp_path, cps_text="11004\n39001\n", args=("--max-km", "100"))
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == "codigo_postal;oficina;cp_oficina;distancia_km;lejos"
+    assert rows["11004"][3] == "100.1" and rows["11004"][4] == "SI"
+    assert rows["39001"][3] == "74.6" and rows["39001"][4] == "NO"
+
+
+def test_max_km_sin_coordenadas_row_has_empty_cell(tmp_path):
+    _, _, produced = run_in(tmp_path, cps_text="99999\n", args=("--max-km", "100"))
+    _, rows = rows_by_cp(produced)
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", ""]
+
+
+def test_both_flags_column_order(tmp_path):
+    code, _, produced = run_in(
+        tmp_path, cps_text="11004\n99999\n", args=("--precision", "--max-km", "100")
+    )
+    header, rows = rows_by_cp(produced)
+    assert code == 0
+    assert header == PRECISION_HEADER + ";lejos"
+    assert rows["11004"][3] == "100.1" and rows["11004"][6] == "SI"
+    assert rows["99999"] == ["99999", "", "", "SIN COORDENADAS", "", "", ""]
+
+
+@pytest.mark.parametrize("valor", ["0", "-5"])
+def test_max_km_must_be_positive(tmp_path, valor):
+    code, _, produced = run_in(tmp_path, args=("--max-km", valor))
+    assert code != 0
+    assert produced == b""
