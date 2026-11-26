@@ -31,7 +31,7 @@ codigo_postal;oficina;cp_oficina;distancia_km
 - A CP without coordinates is kept in the output and marked `SIN COORDENADAS`; it is never dropped.
 - Office rows with no name, or with a CP that has no coordinates, are skipped with a warning on stdout.
 - The first row is treated as a header only when its first cell contains no digit (`cp`, `codigo_postal`). A first row such as `ABC12` is data.
-- On an exact tie, the office that comes first in `oficinas.csv` wins.
+- On an exact tie, the office with the lowest CP wins, then the first name alphabetically. The result never depends on the order of `oficinas.csv`.
 - Distances are straight lines between CP centroids: they ignore sea, mountains and roads, so treat long distances as approximate.
 
 ## Tests
