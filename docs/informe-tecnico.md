@@ -1,6 +1,6 @@
 # Asignación de la oficina más cercana por código postal: informe técnico
 
-> Instantánea del 2026-11-25. Los tres gráficos y el mapa no caben en Markdown: esta copia los marca como *[Gráfico: …]*. La versión completa, con gráficos y mapa, está en el documento en línea: https://claude.ai/artifact/A7Xbg2csaA1BKJzZ3KXSUp
+> Instantánea del 2026-11-25. Los gráficos y el mapa son capturas del documento en línea original, guardadas en `docs/img/`.
 >
 > **Estado en v0.2.0:** las debilidades 1, 4, 5, 6, 7 y 8 están resueltas; la 2 y la 3 están mitigadas con las opciones `--precision` y `--max-km`, que no cambian la salida por defecto. Queda abierta la distancia real por carretera o por mar (debilidad 3) y la licencia del propio código. El resto del texto es la instantánea del 2026-11-25.
 
@@ -20,7 +20,7 @@ El diseño es deliberadamente pequeño: solo biblioteca estándar, sin estado y 
 
 ## El algoritmo sobre un mapa
 
-*[Mapa de España: cada CP unido por una línea a su oficina más cercana; las líneas azules superan los 100 km. Cuatro casos numerados. Ver el documento en línea.]*
+![Mapa de España: cada CP unido por una línea a su oficina más cercana; las líneas azules superan los 100 km. Cuatro casos numerados.](img/mapa-asignacion.png)
 
 Cada CP se convierte en un punto con la latitud y la longitud de GeoNames. El script mide la distancia en línea recta a todas las oficinas y une el CP con la más cercana; las líneas azules marcan las asignaciones de más de 100 km. Cuatro casos del mapa muestran las reglas:
 
@@ -62,13 +62,13 @@ La mitad de los CPs se promedian a partir de varias localidades, y en 131 de ell
 | Tiempo de emparejamiento, 11 oficinas, los 11 150 CPs | unos 0,1 s (13 µs por CP) |
 | Tiempo de emparejamiento, 1000 oficinas, los 11 150 CPs | unos 12,9 s (1159 µs por CP) |
 
-*[Gráfico: «131 de 5452 CPs multilocalidad tienen una localidad a más de 25 km de su centroide». Distribución por tramos: hasta 1 km: 2036; 1-5 km: 2306; 5-10 km: 749; 10-25 km: 230; más de 25 km: 131.]*
+![131 de 5452 CPs multilocalidad tienen una localidad a más de 25 km de su centroide](img/grafico-dispersion-centroide.png)
 
 Dos lecturas. Primera: el centroide de un CP es un buen sustituto para un CP urbano típico, pero malo para un CP rural que agrupa pueblos lejanos: un resultado de 1,8 km es fiable; uno de 38 km puede errar en el mismo orden. Segunda: el coste es O(CPs × oficinas) y lineal en oficinas: irrelevante con 11, notable con 1000, y por eso un índice espacial solo compensa a esa escala.
 
 En la ejecución con los datos sintéticos, 13 de los 39 CPs asignados coinciden con el CP de su oficina, y 8 quedan a más de 100 km. Son líneas rectas: Mahón a Palma y Arrecife a Las Palmas cruzan el mar.
 
-*[Gráfico: «8 de 39 CPs asignados quedan a más de 100 km de su oficina». Por tramos: 0 km (mismo CP): 13; 0-5 km: 7; 5-50 km: 5; 50-100 km: 6; 100-200 km: 4; más de 200 km: 4.]*
+![8 de 39 CPs asignados quedan a más de 100 km de su oficina](img/grafico-distancia-asignada.png)
 
 ## Datos sintéticos: matriz de cobertura
 
@@ -95,7 +95,7 @@ En la ejecución con los datos sintéticos, 13 de los 39 CPs asignados coinciden
 
 Todas las oficinas válidas ganan al menos un CP salvo Sevilla-Duplicada. Esa excepción es intencionada y está documentada en `CLAUDE.md`.
 
-*[Gráfico: «17 de 18 oficinas ganan algún CP; la excepción es Sevilla-Duplicada». CPs por oficina: Sevilla-Casco Antiguo 5, Madrid-Centro 5, Málaga-Centro 5, Logroño-Centro 3, Madrid-Norte 3, Barcelona-Eixample 3, A Coruña-Oliveira 2, Pamplona-Centro 2, Valencia-Ciutat Vella 2, Las Palmas-Centro 2, Bilbao-Abando 1, Zaragoza-Delicias 1, Palma-Centro 1, Valladolid-Centro 1, Murcia-Centro 1, Granada-Centro 1, Zaragoza-Centro 1, Sevilla-Duplicada 0.]*
+![17 de 18 oficinas ganan algún CP; la excepción es Sevilla-Duplicada](img/grafico-cps-por-oficina.png)
 
 ## Debilidades y riesgos
 
