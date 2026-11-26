@@ -25,14 +25,32 @@ codigo_postal;oficina;cp_oficina;distancia_km
 99999;;;SIN COORDENADAS
 ```
 
+## Options
+
+Both options are opt-in and only append columns, so the default output does not change.
+
+| Option | Appends | Meaning |
+| --- | --- | --- |
+| `--precision` | `localidades`, `dispersion_km` | How many localities GeoNames lists for the CP, and the largest distance (km) from one of them to the centroid used. A large spread means the CP is a loose approximation. |
+| `--max-km N` | `lejos` | `SI` when the exact distance is greater than N km, otherwise `NO` (N must be greater than 0). Flags long assignments such as sea crossings; the assigned office never changes. |
+
+```
+$ python3 oficina_cercana.py cps.csv oficinas.csv --precision --max-km 100
+codigo_postal;oficina;cp_oficina;distancia_km;localidades;dispersion_km;lejos
+28045;Oficina Madrid-Centro;28013;2.8;1;0.0;NO
+11004;Oficina Sevilla-Casco Antiguo;41002;100.1;1;0.0;SI
+31700;Oficina Pamplona-Centro;31001;37.4;6;3.4;NO
+99999;;;SIN COORDENADAS;;;
+```
+
 ## Behaviour worth knowing
 
-- Coordinates come from [GeoNames](https://download.geonames.org/export/zip/) (`ES.txt`, versioned in this repo). If the file is missing, it is downloaded on the first run. A CP that appears in several localities uses the average of their coordinates.
+- Coordinates come from [GeoNames](https://download.geonames.org/export/zip/) (`ES.txt`, versioned in this repo). If the file is missing, it is downloaded on the first run (30 s timeout; it is saved only if it passes basic integrity checks, otherwise the script exits with a message and leaves no partial file). A CP that appears in several localities uses the average of their coordinates.
 - A CP without coordinates is kept in the output and marked `SIN COORDENADAS`; it is never dropped.
 - Office rows with no name, or with a CP that has no coordinates, are skipped with a warning on stdout.
 - The first row is treated as a header only when its first cell contains no digit (`cp`, `codigo_postal`). A first row such as `ABC12` is data.
 - On an exact tie, the office with the lowest CP wins, then the first name alphabetically. The result never depends on the order of `oficinas.csv`.
-- Distances are straight lines between CP centroids: they ignore sea, mountains and roads, so treat long distances as approximate.
+- Distances are straight lines between CP centroids: they ignore sea, mountains and roads, so treat long distances as approximate and use `--max-km` to flag them. Road or sea-aware distance is not implemented: it would need a routing service.
 
 ## Tests
 
@@ -40,7 +58,7 @@ codigo_postal;oficina;cp_oficina;distancia_km
 python3 -m pytest tests/ -q
 ```
 
-`tests/test_golden.py` runs the script on the committed `cps.csv` and `oficinas.csv` in a temporary directory and compares the output with the committed `asignacion.csv` (the golden file) byte by byte, plus the warnings printed on stdout. When behaviour changes on purpose, regenerate the golden file, review `git diff asignacion.csv` and commit it with the change.
+`tests/test_golden.py` runs the script on the committed `cps.csv` and `oficinas.csv` in a temporary directory and compares the output with the committed `asignacion.csv` (the golden file) byte by byte, plus the warnings printed on stdout, and exercises both options. `tests/test_download.py` checks the download hardening with a fake network. When behaviour changes on purpose, regenerate the golden file, review `git diff asignacion.csv` and commit it with the change.
 
 ## Repository
 
@@ -49,13 +67,16 @@ python3 -m pytest tests/ -q
 | `oficina_cercana.py` | The script |
 | `cps.csv`, `oficinas.csv`, `asignacion.csv` | Synthetic fixtures and their expected output |
 | `ES.txt` | GeoNames postal code data for Spain |
-| `tests/` | Golden-file tests |
+| `tests/` | Golden-file, option and download tests |
 | `docs/informe-tecnico.md` | Technical report (in Spanish): measurements, weaknesses, next steps |
 | `CHANGELOG.md` | Release notes |
+| `NOTICE.md` | GeoNames attribution (CC BY 4.0) |
 | `CLAUDE.md` | Guidance for Claude Code |
 
 Git workflow: gitflow. Work happens on `feature/*` and `fix/*` branches merged into `develop`; releases go through `release/x.y.z` into `main`, tagged `vx.y.z`.
 
 ## Data and licence
 
-`ES.txt` is GeoNames data, which is distributed under a Creative Commons Attribution licence; check the current terms in the GeoNames readme and keep the attribution before redistributing this repository. This project has no licence file yet.
+`ES.txt` is GeoNames data, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) (verified against the GeoNames readme on 2026-11-25). Keep the credit when redistributing this repository: *Postal code data © [GeoNames](https://www.geonames.org), CC BY 4.0*. See [`NOTICE.md`](NOTICE.md). GeoNames coordinates are often computed by an algorithm, so treat them as approximate.
+
+This project's own code has no licence file yet; that is the repository owner's decision.

@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `--precision` appends `localidades` and `dispersion_km` (how many localities GeoNames lists
+  for the CP and how far the farthest one is from the centroid used).
+- `--max-km N` appends `lejos` (`SI` when the distance exceeds N km). The assignment does not change.
+- `NOTICE.md` with the GeoNames attribution; the licence (CC BY 4.0) was verified against the
+  GeoNames readme.
+- Download tests with a fake network (`tests/test_download.py`).
+
+### Changed
+
+- Exact ties are broken by the lowest office CP and then the name, not by the order of
+  `oficinas.csv`.
+- Arguments are parsed with `argparse`; the positional usage is unchanged and a usage error now
+  exits with code 2.
+- The distance to the nearest office is computed once per CP.
+
+### Fixed
+
+- The GeoNames download now has a 30 s timeout, requires `ES.txt` inside the zip, checks the
+  content and writes it atomically, so a failed download never leaves a partial `ES.txt`.
+
 ## [0.1.3] - 2026-11-25
 
 ### Added
