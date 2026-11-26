@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-11-26
+
+### Fixed
+
+- `docs/informe-tecnico.md` now includes the three charts and the map of Spain as images
+  (`docs/img/`). The first Markdown export had dropped them and left text placeholders.
+  The link to the private online copy was removed.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added
